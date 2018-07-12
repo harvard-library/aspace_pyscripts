@@ -1,0 +1,13 @@
+# template for the pdfStorer script
+tmpdir: ./pdftmp/  # make sure whatever you define as a subfolder already exists
+
+pdfurl: http://localhost:8081  # usually we're running on the same machine as the PUI
+pickle: # filepath to a pickle file.  Make sure that, if a subdirectory is specified, it already exists
+instance: dev
+#
+# s3 creds
+s3_yaml: s3.yml  # see s3.yml.template for what should be in this file
+#
+# solr link
+solr_url: "http://your_solr_domain_here:your_port/solr/"
+solr_collection: your_collection_name
