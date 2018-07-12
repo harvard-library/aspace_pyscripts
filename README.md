@@ -3,20 +3,105 @@ Python scripts to support ongoing [ArchivesSpace](http://www.archivesspace.org) 
 
 The first script is designed to create PUI-side PDF files to be stored in an AWS S3 bucket, so that they can be served from the Harvard's ArchivesSpace [Public User Interface](https://github.com/harvard-library/aspace-hvd-pui), as opposed to generating them on-the-fly.
 
-Functionality that is potentially useful for additional scripts has been factored out into sub-folders.
-
-## Dependencies
-
 This work depends heavily on [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake).
 
+Functionality that is potentially useful for additional scripts has been factored out into sub-folders.
 
-## Batch-create PDFs
+## Requirements and Dependencies
+
+These scripts were written with Python 3.6.5
+
+The following python libraries must be installed; they are all available in [PyPi](https://pypi.org):
+* ArchivesSnake  
+* boto3
+* SolrClient
+* python-magic
+
+## Script: Batch-create and store PDFs
+
+[pdfStorer.py](./pdfStorer.py) runs through one or all repositories, creating a PDF and storing it in an AWS S3 bucket when the Resource is marked as **published**, and removing the analogous PDF from the S3 bucket if the Resource has been marked as **unpublished**.
+
+The script uses [pickle](https://docs.python.org/3.5/library/pickle.html) to keep track of the last time that the PDF was created for the resource; this allows creating a cron job that will create a new PDF if the resource is subsequently updated.
+
+###Use:
+
+```bash
+python3 pdfStorer.py [-a] [-r {repository_code}]
+```
+
+| Flag | Description |
+| --- | ---|
+| -a |   clears the pickle file completely.  Use this if you want to completely refresh your S3 PDF holdings|
+| -r {repository_code} |  For those institutions (like Harvard :smile:) that have more than one repository, you may choose to run this script serially for each repository (or just some of them).|
+ 
+ **Note** that, at the moment, only *one* instance of the script may run at a time.
+ 
+ ###Configuration:
+ 
+  This script requires two yaml files: **pdf_store.yml** (see [template](pdf_store.yml.template)), which is expected to be in the same directory as the script, and **s3.yml** (see [template](s3.yml.template)), which can be anywhere, as its path is specified in **pdf_store.yml**
+  
+  At the moment, the logging configuration is hard-coded such that the logs will be written to the **/logs** folder, and have the format **pdf_storer_YYYYMMDD.log**. This may change in subsequent releases.
+  
+ **In addition**, the *already_running* function in the (utilities subpackage)[utils/utils.py], which is used to determine if there already is a **pdfStorer** process running, assumes that the operating system is linux.  Feel free to fork and contribute back! 
+ 
 
 ## Reusable functionality
 
 ### Handling S3 buckets
 
+The [S3](s3_support/S3.py) class is used to manage an S3 bucket. An S3 object can be instantiated with keyword arguments as follows:
+
+| Key | Value|
+| -- | -- |
+|configpath | The filepath to an **s3.yml** file |
+|accesskey | The AWS S3 accesskey|
+|secret| The AWS S3 secret |
+| bucket | The name of the bucket to be addressed |
+
+If you define **configpath**, and the s3.yml file is properly filled in, you need not use the other keyword arguments.
+
+#### Use:
+```python
+  s3 = s3(configpath = '/my/s3.yml')
+  s3.upload('/my/object/path', 'mykey')
+  s3.get_object_head('mykey')
+  s3.download('mykey', '/my/new/object/path')
+  s3.remove('mykey')
+```
+
+| Method | Function |
+| -- | -- |
+|*initialize*| See above |
+| download | downloads the file from the bucket|
+| get_object_head | returns the **head_object** as defined by AWS|
+| remove | removes the file from the S3 bucket|
+| upload|  loads the file into the S3 bucket|
+
+### Pickler
+
+The [pickler](utils/pickler.py) class was abstracted out sp that more than one script could use it, rather than endlessly cutting and pasting.  The object to be "pickled" is assumed to be a *dict* datatype.
+
+#### Use:
+```python
+  pkl = pickler(filepath)
+  if 'foo' not in pkl.obj:
+     pkl.obj['foo'] = 'bar'
+  pkl.save()
+```
+where filepath is the path to the file that will hold/holds the pickled object. 
+
+| Method | Function |
+| -- | -- |
+| *initialize* | Opens the file and invokes the *load* method. the pickled object.|
+| load | loads the pickled object from the file. If the file doesn't exist, the object is created as an empty *dict* |
+| clear | empties the object |
+| save| pickles the object and writes it to the file (pickle.dump)|
+
+
 ### Utilities
+
+[TBD: a description of the utilities in [utils/utils.py](utils/utils.py) ]
+
 
 ## Contributors
 
