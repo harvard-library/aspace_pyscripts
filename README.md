@@ -23,7 +23,7 @@ The following python libraries must be installed; they are all available in [PyP
 
 The script uses [pickle](https://docs.python.org/3.5/library/pickle.html) to keep track of the last time that the PDF was created for the resource; this allows creating a cron job that will create a new PDF if the resource is subsequently updated.
 
-###Use:
+### Use:
 
 ```bash
 python3 pdfStorer.py [-a] [-r {repository_code}]
@@ -36,7 +36,7 @@ python3 pdfStorer.py [-a] [-r {repository_code}]
  
  **Note** that, at the moment, only *one* instance of the script may run at a time.
  
- ###Configuration:
+ ### Configuration:
  
   This script requires two yaml files: **pdf_store.yml** (see [template](pdf_store.yml.template)), which is expected to be in the same directory as the script, and **s3.yml** (see [template](s3.yml.template)), which can be anywhere, as its path is specified in **pdf_store.yml**
   
