@@ -5,7 +5,14 @@ import logging
 from datetime import datetime
 
 # set up logging here, so nothing can grab it first!
-logging.basicConfig(filename="logs/pdfStorer_{}.log".format(datetime.today().strftime("%Y%m%d")), format='%(asctime)-2s --%(filename)s-- %(levelname)-8s %(message)s',datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
+logging.basicConfig(filename="logs/pdfStorer_{}.log".format(datetime.today().strftime("%Y%m%d")), format='%(asctime)-2s --%(filename)s-- %(levelname)-8s %(message)s',datefmt='%Y-%m-%d %H:%M:%S', level=logging.WARNING)
+
+
+main_log = logging.getLogger(__name__)
+main_log.setLevel(logging.INFO)
+console = logging.StreamHandler()
+console.setFormatter(logging.Formatter('%(name)-12s: %(levelname)-8s %(asctime)s %(message)s'))
+main_log.addHandler(console)
 
 import requests
 from boltons.dictutils import OMD
@@ -63,12 +70,9 @@ def get_pdf(uri, directory, name):
     with the supplied name
     The 'pdfurl' value is a string to be formated with the uri
     """
-    #print("{} dir: {} name: {}".format(uri, directory, name))
     # check for the directory and name being non-empty?
     filename = directory + name + ".pdf"
-    #print("filename: {}".format(filename))
     url = omd.get('pdfurl').format(uri)
-    #print("url: {} ".format(url)) # CREATE THE DIRECTORY, DUMMY!
     r = requests.get(url, stream=True)
     with open(filename, 'wb') as fd:
         for chunk in r.iter_content(3000):
@@ -85,7 +89,7 @@ def needs_update(uri, last_dttm):
 
 def process_repository(repo):
     global ctr
-    logging.info("Starting repository {} {} {}".format(repo.id, repo.repo_code, repo.name))        
+    main_log.info("Starting repository {} {} {}".format(repo.id, repo.repo_code, repo.name))        
     pdf_ctr = 0
     pdf_del = 0
     global pdf_upd
@@ -100,7 +104,7 @@ def process_repository(repo):
         if ctr % 10 == 0:
             pkl.save()
     pkl.save() # always save at end of repo
-    logging.info("Finished repository {} {} {}. {} published pdfs  {} unpublished resources {} pdfs needing updating".format(repo.id, repo.repo_code, repo.name,pdf_ctr, pdf_del, pdf_upd))
+    main_log.info("Finished repository {} {} {}. {} published pdfs  {} unpublished resources {} pdfs needing updating".format(repo.id, repo.repo_code, repo.name,pdf_ctr, pdf_del, pdf_upd))
 
 def process_resource(resource, publish):
     """Determine whether to get this resource's pdf;
@@ -111,7 +115,8 @@ def process_resource(resource, publish):
         name = resource.ead_id 
     except AttributeError as ae:
         name = res_ident
-        logging.warning("{} \n No EAD ID; name is: {}".format(ae,name));
+        if publish:
+            main_log.warning("No EAD ID for \t{}; \tname is: {}".format(resource.title,name));
     except Exception as e:
         raise e
     published = False
@@ -149,14 +154,17 @@ def main():
     global tmpdir
     global ctr
     global solr
-    logging.info('Beginning PDF storing run: all is %r, repo_code is %r' % (all, repo_code)) 
+    global console
+    console.setLevel(logging.INFO)
+    main_log.info('Beginning PDF storing run: all is %r, repo_code is %r' % (all, repo_code)) 
+    console.setLevel(logging.ERROR)
     # "mute" the INFO, DEBUG level of sub-components
     logging.getLogger("connectionpool.py").setLevel(logging.WARNING)
     omd = get_details()
-    logging.debug("temp: {} url: {} s3 yaml:{} ".format(omd.get('tmpdir'), omd.get('pdfurl'), omd.get('s3_yaml')))
+    main_log.debug("temp: {} url: {} s3 yaml:{} ".format(omd.get('tmpdir'), omd.get('pdfurl'), omd.get('s3_yaml')))
     instance =  omd.get('instance')
-    logging.info("Instance: " + instance)
-    logging.info("retrieving pickle, if any")
+    main_log.info("Instance: " + instance)
+    main_log.info("retrieving pickle, if any")
     pkl = pickler(omd.get("pickle"))
     if all:
         pkl.clear();
@@ -175,10 +183,12 @@ def main():
             process_repository(repo)
             repo_ctr += 1
     pkl.save() # last time for good luck!
-    logging.info("Completed. Processed {} repositories, {} resources: {} pdfs created, {} pdfs deleted, {} errors".format(repo_ctr, ctr, counters['created'], counters['deleted'], counters['errors']))
+    console.setLevel(logging.INFO)
+    main_log.info("Completed. Processed {} repositories, {} resources: {} pdfs created, {} pdfs deleted, {} errors".format(repo_ctr, ctr, counters['created'], counters['deleted'], counters['errors']))
+    sys.exit(0)
 
 if already_running(pidfilepath):
-    logging.error(sys.argv[0] + " already running.  Exiting")
+    main_log.error(sys.argv[0] + " already running.  Exiting")
     print(sys.argv[0] + " already running.  Exiting")
     sys.exit()
 try:
