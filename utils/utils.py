@@ -5,6 +5,25 @@ from datetime import datetime
 
 pp = pprint.PrettyPrinter(indent=4)
 
+# check to see if process is already running  (from RockefellerArchives's 'checkPid')
+def already_running(pidfilepath):
+    currentPid = str(os.getpid())
+    if os.path.isfile(pidfilepath):
+        pidfile = open(pidfilepath, "r")
+        for line in pidfile:
+            pid=int(line.strip())
+        if pid_exists(pid):
+            return True;
+        else:
+            with open(pidfilepath, 'w') as pf:
+                pf.write(currentPid)
+    else:
+         with open(pidfilepath, 'w') as pf:
+             pf.write(currentPid)
+    return False
+
+
+
 # get the file type
 def get_filetype(filepath):
     return  magic.from_file(filepath)
@@ -27,23 +46,6 @@ def get_latest_update(url,collection, query):
         dttm = datetime.strptime(date,"%Y-%m-%dT%H:%M:%SZ")
         pp.pprint(dttm)
     return dttm
-
-# check to see if process is already running  (from RockefellerArchives's 'checkPid')
-def already_running(pidfilepath):
-    currentPid = str(os.getpid())
-    if os.path.isfile(pidfilepath):
-        pidfile = open(pidfilepath, "r")
-        for line in pidfile:
-            pid=int(line.strip())
-        if pid_exists(pid):
-            return True;
-        else:
-            with open(pidfilepath, 'w') as pf:
-                pf.write(currentPid)
-    else:
-         with open(pidfilepath, 'w') as pf:
-             pf.write(currentPid)
-    return False
 
 def pid_exists(pid):
     """ examines the linux /proc/{pid}/status file, if it exists.
@@ -79,3 +81,36 @@ def pid_exists(pid):
                 raise ValueError("'Tgid' line not found in %s" % procpath)
         except (EnvironmentError, ValueError):
             return pid in [int(x) for x in os.listdir(b(get_procfs_path())) if x.isdigit()]
+
+
+#  h/t Tim Elliot of Harvard's Library Technology Services
+def send_mail(mailTo, mailFrom, subject, message = False):
+    """ sends mail.
+     Parameters
+        mailTo       Email address to send message to
+        mailFrom     Email address to use as the 'From'
+        subject      Message to appear in subject line
+        message      Optional, the subject we be used in the
+        body of the email if message is not set
+    """
+    import smtplib, re
+    from email.mime.text import MIMEText
+
+    # Create a text/plain message
+    msgEmail = MIMEText(message)
+    
+    msgEmail['Subject'] = subject
+    msgEmail['From']    = mailFrom
+    msgEmail['To']      = mailTo
+        
+    # Convert scalar to array if more than 1 address is used
+    matched = re.match('.+,.+', mailTo)
+    if matched != None:
+        mailTo = mailTo.split(',')
+        
+    smtp = smtplib.SMTP('localhost')
+    smtp.sendmail(mailFrom, mailTo, msgEmail.as_string())
+    smtp.quit()            
+
+    return
+ 

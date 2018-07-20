@@ -4,8 +4,11 @@ import sys, getopt, attr, structlog, yaml
 import logging
 from datetime import datetime
 
+DATEFORMAT ='%Y-%m-%d %H:%M:%S'
+MAILSUBJECT = "Batch Processing of ArchivesSpace PDFs Completed"
+
 # set up logging here, so nothing can grab it first!
-logging.basicConfig(filename="logs/pdfStorer_{}.log".format(datetime.today().strftime("%Y%m%d")), format='%(asctime)-2s --%(filename)s-- %(levelname)-8s %(message)s',datefmt='%Y-%m-%d %H:%M:%S', level=logging.WARNING)
+logging.basicConfig(filename="logs/pdfStorer_{}.log".format(datetime.today().strftime("%Y%m%d")), format='%(asctime)-2s --%(filename)s-- %(levelname)-8s %(message)s',datefmt=DATEFORMAT, level=logging.WARNING)
 
 
 main_log = logging.getLogger(__name__)
@@ -19,7 +22,7 @@ from boltons.dictutils import OMD
 from os.path import exists, expanduser
 import os
 from asnake.aspace import ASpace
-from utils.utils import get_latest_update, already_running, get_filetype
+from utils.utils import get_latest_update, already_running, get_filetype, send_mail
 from utils.pickler import pickler
 from s3_support.s3 import S3
 from SolrClient import SolrClient
@@ -32,6 +35,7 @@ pp =  pprint.PrettyPrinter(indent=4)
 omd = ''
 ctr = 0
 counters = {'created': 0, 'deleted': 0, 'errors':0}
+repo_ctr = 0
 pidfilepath = 'pdfstorerdaemon.pid'
 all = False
 repo_code = None
@@ -146,20 +150,14 @@ def process_resource(resource, publish):
             pkl.obj.pop(res_ident, None)
     return published
     
-
-def main():
+def do_it():
     global omd
     global s3
     global pkl # the pickle
     global tmpdir
     global ctr
     global solr
-    global console
-    console.setLevel(logging.INFO)
-    main_log.info('Beginning PDF storing run: all is %r, repo_code is %r' % (all, repo_code)) 
-    console.setLevel(logging.ERROR)
-    # "mute" the INFO, DEBUG level of sub-components
-    logging.getLogger("connectionpool.py").setLevel(logging.WARNING)
+    global repo_ctr
     omd = get_details()
     main_log.debug("temp: {} url: {} s3 yaml:{} ".format(omd.get('tmpdir'), omd.get('pdfurl'), omd.get('s3_yaml')))
     instance =  omd.get('instance')
@@ -176,26 +174,54 @@ def main():
     except Exception as e:
         raise e
     aspace = ASpace()
-    repo_ctr = 0
-    #TODO: allow for single repository
     for repo in aspace.repositories:
         if all or repo_code is None  or repo.repo_code == repo_code:
             process_repository(repo)
             repo_ctr += 1
     pkl.save() # last time for good luck!
+
+def main():
+    mailmsg = ''
+    global console
     console.setLevel(logging.INFO)
-    main_log.info("Completed. Processed {} repositories, {} resources: {} pdfs created, {} pdfs deleted, {} errors".format(repo_ctr, ctr, counters['created'], counters['deleted'], counters['errors']))
-    sys.exit(0)
+    start_msg = 'Beginning PDF storing run: all is %r, repo_code is %r , from is %r, to is %r' % (all, repo_code, efrom, eto)
+    main_log.info(start_msg)
+    mail_msg = datetime.now().strftime(DATEFORMAT) + " " + start_msg + "\n\t Logfile is at {}/logs/pdf_storer_{}.log".format(os.getcwd(), datetime.today().strftime("%Y%m%d"))
+    console.setLevel(logging.ERROR)
+    # "mute" the INFO, DEBUG level of sub-components
+    logging.getLogger("connectionpool.py").setLevel(logging.WARNING)
+    clean = True
+    try:
+        do_it()
+        console.setLevel(logging.INFO)
+        end_msg = "Completed. Processed {} repositories, {} resources: {} pdfs created, {} pdfs deleted, {} errors".format(repo_ctr, ctr, counters['created'], counters['deleted'], counters['errors'])
+        main_log.info(end_msg)
+        mail_msg = mail_msg + "\n" + datetime.now().strftime(DATEFORMAT) + " " + end_msg
+    except Exception as e:
+        error_msg = "An Error was encountered: ({}). Processing halted".format(e)
+        main_log.error(error_msg)
+        mail_msg = mail_msg + "\n" + datetime.now().strftime(DATEFORMAT) + " " + error_msg
+        clean = False
+    if (clean):
+        if efrom and eto:
+            send_mail(eto, efrom, MAILSUBJECT, mail_msg)
+        sys.exit(0)
+    else:
+        if efrom and eto:
+            send_mail(eto, efrom, MAILSUBJECT +' WITH ERROR', mail_msg)
+        sys.exit(1)
+
 
 if already_running(pidfilepath):
     main_log.error(sys.argv[0] + " already running.  Exiting")
     print(sys.argv[0] + " already running.  Exiting")
     sys.exit()
 try:
-    opts, args = getopt.getopt(sys.argv[1:],"har:",["repo=", "help="])
+    opts, args = getopt.getopt(sys.argv[1:],"har:t:f:",["repo=", "help=", "from=", "to="])
 except getopt.GetoptError:
-    print('pdfStorer.py -r <repository code> -a [if clearing and starting from scratch]')
+    print('pdfStorer.py [-r <repository code>] [-a (if clearing and starting from scratch)] [-f <from address> -t <to address>]')
     sys.exit(2)
+efrom = eto = None
 for opt,arg in opts:
     if opt in ("-h", "--help"):
         print('pdfStorer.py -r <repository code> -a [if clearing and starting from scratch]')
@@ -204,5 +230,11 @@ for opt,arg in opts:
         all = True
     elif opt in ("-r", "--repo"):
         repo_code = arg.upper()
+    elif opt in ("-f", "--from"):
+        efrom = arg
+    elif opt in ("-t", "--to"):
+        eto = arg
+if not efrom or not eto:
+    efrom = eto = None
 main()
 os.unlink(pidfilepath)
