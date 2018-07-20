@@ -110,6 +110,13 @@ def process_repository(repo):
     pkl.save() # always save at end of repo
     main_log.info("Finished repository {} {} {}. {} published pdfs  {} unpublished resources {} pdfs needing updating".format(repo.id, repo.repo_code, repo.name,pdf_ctr, pdf_del, pdf_upd))
 
+# Removing the file
+def remove_file(name, res_ident):
+     s3.remove(name + ".pdf")
+     if res_ident in pkl.obj:
+         counters['deleted'] +=1
+         pkl.obj.pop(res_ident, None)
+
 def process_resource(resource, publish):
     """Determine whether to get this resource's pdf;
     if so, pass to get_pdf with a directory and name
@@ -119,7 +126,10 @@ def process_resource(resource, publish):
         name = resource.ead_id 
     except AttributeError as ae:
         name = res_ident
-        if publish:
+        if resource.level != 'collection':
+            remove_file(name, res_ident)
+            return False
+        if publish and resource.publish:
             main_log.warning("No EAD ID for \t{}; \tname is: {}".format(resource.title,name));
     except Exception as e:
         raise e
@@ -140,14 +150,12 @@ def process_resource(resource, publish):
                 published = True
             else:
                 logging.error("Retrieved file {} for resource {}  has filetype of {}, not PDF".format(filepath, resource.uri, filetype))
+                remove_file(name, res_ident)
                 counters['errors'] += 1
         else:
             published = True # even if we don't need a new pdf, we count it as "published"
     else:
-        s3.remove(name)
-        if res_ident in pkl.obj:
-            counters['deleted'] +=1
-            pkl.obj.pop(res_ident, None)
+        remove_file(name, res_ident)
     return published
     
 def do_it():
