@@ -109,3 +109,9 @@ s3.yml
 
 # log files
 *.log
+
+# pdftmp files
+pdftmp/*pdf
+
+#pickle file
+pickle
