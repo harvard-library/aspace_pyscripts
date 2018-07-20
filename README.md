@@ -17,6 +17,27 @@ The following python libraries must be installed; they are all available in [PyP
 * SolrClient
 * python-magic
 
+There is a [bash script](.bin/install_libraries.sh) provided for installing these libraries on the **user** level.
+
+### Important Note:
+
+The scripts in this repository that use ArchivesSnake are relying on there being an **.archivessnake.yml** configuration file in the home directory of the user. 
+An example configuration file:
+
+``` yaml
+baseurl: http://localhost:4567
+username: admin
+password: admin
+```
+
+## Installation
+
+* Make sure you have Python v 3.6.5 or higher installed, with the appropriate PIP tool
+* Clone or download this repository as a zip
+* Install the required python libraries
+* Create **.archivessnake** with the baseurl, username, and password for your ArchivesSpace instance
+* Create **pdf_store.yml** and **s3.yml**, using the included templates.
+
 ## Script: Batch-create and store PDFs
 
 [pdfStorer.py](./pdfStorer.py) runs through one or all repositories, creating a PDF and storing it in an AWS S3 bucket when the Resource is marked as **published**, and removing the analogous PDF from the S3 bucket if the Resource has been marked as **unpublished**.
@@ -42,7 +63,7 @@ python3 pdfStorer.py [-a] [-r {repository_code}]
   
   At the moment, the logging configuration is hard-coded such that the logs will be written to the **/logs** folder, and have the format **pdf_storer_YYYYMMDD.log**. This may change in subsequent releases.
   
- **In addition**, the *already_running* function in the (utilities subpackage)[utils/utils.py], which is used to determine if there already is a **pdfStorer** process running, assumes that the operating system is linux.  Feel free to fork and contribute back! 
+ **In addition**, the *already_running* function in the [utilities subpackage](utils/utils.py), which is used to determine if there already is a **pdfStorer** process running, assumes that the operating system is linux.  Feel free to fork and contribute back! 
  
 
 ## Reusable functionality
