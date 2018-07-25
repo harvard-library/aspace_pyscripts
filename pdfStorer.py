@@ -3,12 +3,15 @@
 import sys, getopt, attr, structlog, yaml
 import logging
 from datetime import datetime
+from os.path import exists, expanduser, dirname, realpath
+import os
 
 DATEFORMAT ='%Y-%m-%d %H:%M:%S'
 MAILSUBJECT = "Batch Processing of ArchivesSpace PDFs Completed"
-
+relative_dir =  os.path.dirname(os.path.realpath(__file__))
+logname_template = os.path.dirname(os.path.realpath(__file__)) + "/logs/pdfStorer_{}.log"
 # set up logging here, so nothing can grab it first!
-logging.basicConfig(filename="logs/pdfStorer_{}.log".format(datetime.today().strftime("%Y%m%d")), format='%(asctime)-2s --%(filename)s-- %(levelname)-8s %(message)s',datefmt=DATEFORMAT, level=logging.WARNING)
+logging.basicConfig(filename=logname_template.format(datetime.today().strftime("%Y%m%d")), format='%(asctime)-2s --%(filename)s-- %(levelname)-8s %(message)s',datefmt=DATEFORMAT, level=logging.WARNING)
 
 
 main_log = logging.getLogger(__name__)
@@ -19,8 +22,6 @@ main_log.addHandler(console)
 
 import requests
 from boltons.dictutils import OMD
-from os.path import exists, expanduser
-import os
 from asnake.aspace import ASpace
 from utils.utils import get_latest_update, already_running, get_filetype, send_mail
 from utils.pickler import pickler
@@ -34,7 +35,7 @@ import pprint
 pp =  pprint.PrettyPrinter(indent=4)
 omd = ''
 ctr = 0
-counters = {'created': 0, 'deleted': 0, 'errors':0}
+counters = {'created': 0, 'updated': 0, 'deleted': 0, 'errors':0}
 repo_ctr = 0
 pidfilepath = 'pdfstorerdaemon.pid'
 all = False
@@ -170,7 +171,7 @@ def do_it():
     main_log.debug("temp: {} url: {} s3 yaml:{} ".format(omd.get('tmpdir'), omd.get('pdfurl'), omd.get('s3_yaml')))
     instance =  omd.get('instance')
     main_log.info("Instance: " + instance)
-    main_log.info("retrieving pickle, if any")
+    main_log.info("retrieving pickle, if any, at {}".format(omd.get("pickle")))
     pkl = pickler(omd.get("pickle"))
     if all:
         pkl.clear();
@@ -192,6 +193,7 @@ def main():
     mailmsg = ''
     global console
     console.setLevel(logging.INFO)
+    os.chdir(relative_dir)
     start_msg = 'Beginning PDF storing run: all is %r, repo_code is %r , from is %r, to is %r' % (all, repo_code, efrom, eto)
     main_log.info(start_msg)
     mail_msg = datetime.now().strftime(DATEFORMAT) + " " + start_msg + "\n\t Logfile is at {}/logs/pdf_storer_{}.log".format(os.getcwd(), datetime.today().strftime("%Y%m%d"))
@@ -206,7 +208,11 @@ def main():
         main_log.info(end_msg)
         mail_msg = mail_msg + "\n" + datetime.now().strftime(DATEFORMAT) + " " + end_msg
     except Exception as e:
-        error_msg = "An Error was encountered: ({}). Processing halted".format(e)
+        try:
+            end_msg = "Processed {} repositories, {} resources: {} pdfs created, {} pdfs deleted, {} errors".format(repo_ctr, ctr, counters['created'], counters['deleted'], counters['errors'])
+        except Exception as em:
+            end_msg = "Problem creating the completion line {}".format(em)
+        error_msg = "An Error was encountered: ({}). Processing halted\n {}".format(e, end_msg)
         main_log.error(error_msg)
         mail_msg = mail_msg + "\n" + datetime.now().strftime(DATEFORMAT) + " " + error_msg
         clean = False
