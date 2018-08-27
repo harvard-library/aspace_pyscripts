@@ -116,11 +116,11 @@ If you define **configpath**, and the s3.yml file is properly filled in, you nee
 | upload|  loads the file into the S3 bucket|
 
 
-### bucket_clear.py -- empty out an S3 bucket
+### Script: Empty out an S3 bucket
 
-This is a convenience script that empties a given S3 bucket without deleting the actual bucket.  
+[bucket_clear.py](./bucket_clear.py) is a convenience script that empties a given S3 bucket without deleting the actual bucket.  
 
-#### Usage
+#### Use:
 
 ```bash
   python3 bucket_clear.py
