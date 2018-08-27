@@ -115,9 +115,24 @@ If you define **configpath**, and the s3.yml file is properly filled in, you nee
 | remove | removes the file from the S3 bucket|
 | upload|  loads the file into the S3 bucket|
 
+
+### bucket_clear.py -- empty out an S3 bucket
+
+This is a convenience script that empties a given S3 bucket without deleting the actual bucket.  
+
+#### Usage
+
+```bash
+  python3 bucket_clear.py
+```
+
+If the **s3.yml** file cannot be found in the directory from which you are running this script, you will be asked for the filepath.
+
+Once the script has found the S3 bucket as defined in the yml file, you will be asked to confirm.
+
 ### Pickler
 
-The [pickler](utils/pickler.py) class was abstracted out sp that more than one script could use it, rather than endlessly cutting and pasting.  The object to be "pickled" is assumed to be a *dict* datatype.
+The [pickler](utils/pickler.py) class was abstracted out so that more than one script could use it, rather than endlessly cutting and pasting.  The object to be "pickled" is assumed to be a *dict* datatype.
 
 #### Use:
 ```python
