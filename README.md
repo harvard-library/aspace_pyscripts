@@ -30,7 +30,7 @@ username: admin
 password: admin
 ```
 
-## Installation
+## <a name="installation"Installation</a>
 
 * Make sure you have Python v 3.6.5 or higher installed, with the appropriate PIP tool
 * Clone or download this repository as a zip
@@ -64,6 +64,23 @@ python3 pdfStorer.py [-a] [-r {repository_code}]
   At the moment, the logging configuration is hard-coded such that the logs will be written to the **/logs** folder, and have the format **pdf_storer_YYYYMMDD.log**. This may change in subsequent releases.
   
  **In addition**, the *already_running* function in the [utilities subpackage](utils/utils.py), which is used to determine if there already is a **pdfStorer** process running, assumes that the operating system is linux.  Feel free to fork and contribute back! 
+
+## Script: Identify Users without emails
+
+[missing_emails.py](./missing_emails.py) runs through ArchivesSpace's entire **User** table, identifies those user records that have an empty or null **email** field, and reports out, sorting by Repository.
+
+### Use:
+
+```bash 
+python3 missing_emails.py
+```
+
+The results are reported in *logs/missing_emails.log*.
+
+### Configuration:
+
+This script uses ArchivesSnake, so the **.archivessnake** file (as defined above in the *<a href="#installation">Installation</a>* section) must be present.
+
  
 
 ## Reusable functionality
