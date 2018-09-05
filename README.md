@@ -81,7 +81,26 @@ The results are reported in *logs/missing_emails.log*.
 
 This script uses ArchivesSnake, so the **.archivessnake** file (as defined above in the *<a href="#installation">Installation</a>* section) must be present.
 
- 
+## Script: Report permissions for all or selected users
+
+[report_permissions.py](./report_permissions.py) reports on the permissions granted to users, by repository.  If no usernames are specified, the entire user list will be reported on.
+
+### Use:
+
+```bash
+python3 report_permissions.py   # to report on all users
+```
+**OR**
+```bash
+python3 report_permissions.py "username1,username2,username3"  # a comma-delimited list on those you want reports on
+```
+
+The results are reported in *logs/report_permssions.log*.*.
+
+### Configuration:
+
+This script uses ArchivesSnake, so the **.archivessnake** file (as defined above in the *<a href="#installation">Installation</a>* section) must be present.
+
 
 ## Reusable functionality
 
