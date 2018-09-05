@@ -30,7 +30,7 @@ username: admin
 password: admin
 ```
 
-## Installation
+## <a name="installation">Installation</a>
 
 * Make sure you have Python v 3.6.5 or higher installed, with the appropriate PIP tool
 * Clone or download this repository as a zip
@@ -64,7 +64,43 @@ python3 pdfStorer.py [-a] [-r {repository_code}]
   At the moment, the logging configuration is hard-coded such that the logs will be written to the **/logs** folder, and have the format **pdf_storer_YYYYMMDD.log**. This may change in subsequent releases.
   
  **In addition**, the *already_running* function in the [utilities subpackage](utils/utils.py), which is used to determine if there already is a **pdfStorer** process running, assumes that the operating system is linux.  Feel free to fork and contribute back! 
- 
+
+## Script: Identify Users without emails
+
+[missing_emails.py](./missing_emails.py) runs through ArchivesSpace's entire **User** table, identifies those user records that have an empty or null **email** field, and reports out, sorting by Repository.
+
+### Use:
+
+```bash 
+python3 missing_emails.py
+```
+
+The results are reported in *logs/missing_emails.log*.
+
+### Configuration:
+
+This script uses ArchivesSnake, so the **.archivessnake** file (as defined above in the *<a href="#installation">Installation</a>* section) must be present.
+
+## Script: Report permissions for all or selected users
+
+[report_permissions.py](./report_permissions.py) reports on the permissions granted to users, by repository.  If no usernames are specified, the entire user list will be reported on.
+
+### Use:
+
+```bash
+python3 report_permissions.py   # to report on all users
+```
+**OR**
+```bash
+python3 report_permissions.py "username1,username2,username3"  # a comma-delimited list on those you want reports on
+```
+
+The results are reported in *logs/report_permssions.log*.*.
+
+### Configuration:
+
+This script uses ArchivesSnake, so the **.archivessnake** file (as defined above in the *<a href="#installation">Installation</a>* section) must be present.
+
 
 ## Reusable functionality
 
@@ -98,9 +134,24 @@ If you define **configpath**, and the s3.yml file is properly filled in, you nee
 | remove | removes the file from the S3 bucket|
 | upload|  loads the file into the S3 bucket|
 
+
+### Script: Empty out an S3 bucket
+
+[bucket_clear.py](./bucket_clear.py) is a convenience script that empties a given S3 bucket without deleting the actual bucket.  
+
+#### Use:
+
+```bash
+  python3 bucket_clear.py
+```
+
+If the **s3.yml** file cannot be found in the directory from which you are running this script, you will be asked for the filepath.
+
+Once the script has found the S3 bucket as defined in the yml file, you will be asked to confirm.
+
 ### Pickler
 
-The [pickler](utils/pickler.py) class was abstracted out sp that more than one script could use it, rather than endlessly cutting and pasting.  The object to be "pickled" is assumed to be a *dict* datatype.
+The [pickler](utils/pickler.py) class was abstracted out so that more than one script could use it, rather than endlessly cutting and pasting.  The object to be "pickled" is assumed to be a *dict* datatype.
 
 #### Use:
 ```python

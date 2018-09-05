@@ -44,6 +44,10 @@ class S3:
         else:
             return "S3 with no bucket!"
     
+    def clear_bucket(self):
+        #empties out the entire bucket
+        self.bucket.objects.all().delete()
+
     def download(self,key, filepath):
         self.bucket.download_file(key, filepath)
 
