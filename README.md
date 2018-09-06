@@ -170,6 +170,11 @@ where filepath is the path to the file that will hold/holds the pickled object.
 | save| pickles the object and writes it to the file (pickle.dump)|
 
 
+### One-off scripts
+
+Scripts that have been written for one-off or one-use purposes are included here as exemplars:
+ * [publish_unpublished_dos.py](./publish_unpublished_dos.py)
+
 ### Utilities
 
 [TBD: a description of the utilities in [utils/utils.py](utils/utils.py) ]
