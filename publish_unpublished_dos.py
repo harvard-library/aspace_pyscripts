@@ -14,6 +14,10 @@ import os
 import pprint
 import json
 from asnake.aspace import ASpace
+logname  = os.path.dirname(os.path.realpath(__file__)) + "/logs/sch_dos.log"
+logging.basicConfig(filename=logname,level=logging.INFO)
+main_log = logging.getLogger(__name__)
+main_log.setLevel(logging.INFO)
 
 pp = pprint.PrettyPrinter(indent=4)
 repo_id = '/repositories/8'
@@ -33,12 +37,12 @@ for do in repo.search.with_params(q="primary_type:digital_object AND publish:fal
     for fv in do_json['file_versions']:
         fv['publish'] = True
     do_json['publish'] = True
-    print("Updating {} [{}]".format(do.title, do_uri))
+    main_log.info("Updating {} [{}]".format(do.title, do_uri))
     resp = aspace.client.post(do_uri, json= do_json)
     if resp.status_code == 200:
-        print("\t...Updated")
+        main_log.info("\t...Updated")
     else:
-        print("\tUNABLE TO UPDATE; status code: {}".format(resp.status_code))
-print(str(ctr) + " digital objects updated")
+        main_log.info("\tUNABLE TO UPDATE; status code: {}".format(resp.status_code))
+main_log.info(str(ctr) + " digital objects updated")
 
         
