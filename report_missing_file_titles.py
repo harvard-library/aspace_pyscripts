@@ -33,23 +33,37 @@ def check_resources(repo):
     ctr = 0
     miss_ctr = 0
     for resource in repo.resources:
+        if not resource.publish:
+            continue
         ctr += 1
+        # check for ead_id first!!
+        ead_id = ''
+        try:
+            ead_id = resource.ead_id
+        except AttributeError as ae:
+            main_log.error("Missing EAD ID: Resource {} {}".format(resource.uri, resource.title))
+            continue
         file_title = ''
         try:
             file_title = resource.finding_aid_filing_title
         except AttributeError as ae:
             file_title = ''
         if file_title.strip() == '':
-            main_log.info("EADID {}, {}".format(resource.ead_id, resource.title))
+            main_log.info("EADID {}, {}".format(ead_id, resource.title))
             miss_ctr += 1
-    main_log.info("Out of {} collections, {} are missing filing titles ({}%)".format(ctr, miss_ctr, (miss_ctr/ctr * 100)))
+    if ctr > 0:
+        main_log.info("Out of {} published collections, {} are missing filing titles ({}%)".format(ctr, miss_ctr, (miss_ctr/ctr * 100)))
+    else:
+        main_log.info("No published collections found in {}".format(repo.name))
 
 def main():
     ctr = 0
     main_log.info("Starting analysis {}".format(datetime.now().strftime(DATEFORMAT) ))
     aspace = ASpace()
     for repo in aspace.repositories:
-        main_log.info("\n ****** Checking {}".format(repo.name))
+        if not repo.publish:
+            continue
+        main_log.info("\n ****** Checking {} **********\n".format(repo.name))
         check_resources(repo)
 
     main_log.info("Completed! {}".format(datetime.now().strftime(DATEFORMAT) ))
