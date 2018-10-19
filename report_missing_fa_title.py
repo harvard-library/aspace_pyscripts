@@ -52,7 +52,7 @@ def check_resources(repo):
             main_log.info("EADID {}, {}".format(ead_id, resource.title))
             miss_ctr += 1
     if ctr > 0:
-        main_log.info("Out of {} published collections, {} are missing finding aid titles ({}%)".format(ctr, miss_ctr, (miss_ctr/ctr * 100)))
+        main_log.info("Out of {} published collections, {} are missing finding aid titles ({:.1f}%)".format(ctr, miss_ctr, (miss_ctr/ctr * 100)))
     else:
         main_log.info("No published collections found in {}".format(repo.name))
 
