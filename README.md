@@ -53,7 +53,7 @@ python3 pdfStorer.py [-a] [-r {repository_code}] [-t {email_address} -f {email_a
 
 | Flag | Description |
 | --- | ---|
-| -a |   clears the saved state completely.  Use this if you want to completely refresh your S3 PDF holdings (for example, if you've changed the PDF output|
+| -a |   clears the saved state completely.  Use this if you want to completely refresh your S3 PDF holdings (for example, if you've changed the PDF output)|
 | -r {repository_code} |  For those institutions (like Harvard :smile:) that have more than one repository, you may choose to run this script serially for each repository (or just some of them).|
 | -t {email_address}| Address to receive a completion message |
 | -f {email_address}| the "From" address for that completion message|
