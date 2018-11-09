@@ -2,7 +2,8 @@
 
 import sys, getopt, attr, structlog, yaml
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+import dateutil.parser
 from os.path import exists, expanduser, dirname, realpath
 import os
 
@@ -24,7 +25,7 @@ import requests
 from boltons.dictutils import OMD
 from asnake.aspace import ASpace
 from utils.utils import get_latest_update, already_running, get_filetype, send_mail
-from utils.pickler import pickler
+from utils.savestate import savestate
 from s3_support.s3 import S3
 from SolrClient import SolrClient
 import pprint
@@ -40,6 +41,20 @@ repo_ctr = 0
 pidfilepath = 'pdfstorerdaemon.pid'
 all = False
 repo_code = None
+
+def add_to_ss(key, dt):
+    """Convert the incoming date to ISO format
+    for serialization before saving
+    """
+    date = dt
+    if type(date) is datetime:
+        date = dt.isoformat()
+    ss.obj[key] = date
+    
+def remove_from_ss(key):
+    """ remove the key
+    """
+    ss.pop(key, None)
 
 def get_details():
     '''looks for values in pdf_store.yml '''
@@ -67,6 +82,7 @@ def get_latest_datetm(resource_uri):
     if res.get_results_count() == 1:
         date = res.docs[0]['system_mtime']
         dttm = datetime.strptime(date,"%Y-%m-%dT%H:%M:%SZ")
+        dttm = dttm.astimezone(tz=None)
     return dttm
         
 
@@ -83,10 +99,20 @@ def get_pdf(uri, directory, name):
         for chunk in r.iter_content(3000):
           fd.write(chunk)
           
-def needs_update(uri, last_dttm):
+def needs_update(uri,res_ident, name):
     global pdf_upd
+    if all:
+        return True
+    last_dttm = None
+    if res_ident in ss.obj:
+        last_dttm =  dateutil.parser.parse(ss.obj[res_ident])
+    else:
+        last_dttm = s3.get_datetm(name + '.pdf')
+    if not last_dttm:
+        return True
+    last = startDateTime or last_dttm
     dttm = get_latest_datetm(uri)
-    if dttm is None or last_dttm > dttm:
+    if dttm is None or last > dttm:
         return False
     else:
         pdf_upd += 1
@@ -94,10 +120,10 @@ def needs_update(uri, last_dttm):
 
 def process_repository(repo):
     global ctr
+    global pdf_upd
     main_log.info("Starting repository {} {} {}".format(repo.id, repo.repo_code, repo.name))        
     pdf_ctr = 0
     pdf_del = 0
-    global pdf_upd
     pdf_upd = 0
     for resource in repo.resources:
         pdf = process_resource(resource, repo.publish)
@@ -107,16 +133,16 @@ def process_repository(repo):
             pdf_del +=1
         ctr +=1
         if ctr % 10 == 0:
-            pkl.save()
-    pkl.save() # always save at end of repo
+            ss.save()
+    ss.save() # always save at end of repo
     main_log.info("Finished repository {} {} {}. {} published pdfs  {} unpublished resources {} pdfs needing updating".format(repo.id, repo.repo_code, repo.name,pdf_ctr, pdf_del, pdf_upd))
 
 # Removing the file
 def remove_file(name, res_ident):
      s3.remove(name + ".pdf")
-     if res_ident in pkl.obj:
+     if res_ident in ss.obj:
          counters['deleted'] +=1
-         pkl.obj.pop(res_ident, None)
+         remove_from_ss(res_ident)
 
 def process_resource(resource, publish):
     """Determine whether to get this resource's pdf;
@@ -137,7 +163,7 @@ def process_resource(resource, publish):
     published = False
     if publish and resource.publish:
         # resource.uri is like /repositories/4/resource/34
-        if  all or not (res_ident in pkl.obj) or needs_update(resource.uri, pkl.obj[res_ident]):
+        if needs_update(resource.uri, res_ident,name):
             get_pdf(resource.uri, tmpdir, name)
             key = name + ".pdf"
             filepath = tmpdir + key
@@ -145,7 +171,7 @@ def process_resource(resource, publish):
             if filetype.upper().startswith('PDF'):
                 s3.upload(filepath, key)
                 #pp.pprint(s3.get_object_head(key))
-                pkl.obj[res_ident] = datetime.utcnow()
+                add_to_ss(res_ident,  datetime.now(timezone.utc))
                 os.remove(filepath)
                 counters['created'] += 1
                 published = True
@@ -162,7 +188,7 @@ def process_resource(resource, publish):
 def do_it():
     global omd
     global s3
-    global pkl # the pickle
+    global ss # the pickle
     global tmpdir
     global ctr
     global solr
@@ -171,12 +197,11 @@ def do_it():
     main_log.debug("temp: {} url: {} s3 yaml:{} ".format(omd.get('tmpdir'), omd.get('pdfurl'), omd.get('s3_yaml')))
     instance =  omd.get('instance')
     main_log.info("Instance: " + instance)
-    main_log.info("retrieving pickle, if any, at {}".format(omd.get("pickle")))
-    pkl = pickler(omd.get("pickle"))
+    main_log.info("retrieving saved state, if any, at {}".format(omd.get("savedstate")))
+    ss = savestate(omd.get("savedstate"))
     if all:
-        pkl.clear();
-    else:
-        solr = SolrClient(omd.get('solr_url'))
+        ss.clear()
+    solr = SolrClient(omd.get('solr_url'))
     tmpdir = omd.get('tmpdir')
     try:
         s3 = S3(configpath = omd.get('s3_yaml'))
@@ -187,7 +212,7 @@ def do_it():
         if all or repo_code is None  or repo.repo_code == repo_code:
             process_repository(repo)
             repo_ctr += 1
-    pkl.save() # last time for good luck!
+    ss.save() # last time for good luck!
 
 def main():
     mailmsg = ''
@@ -231,14 +256,14 @@ if already_running(pidfilepath):
     print(sys.argv[0] + " already running.  Exiting")
     sys.exit()
 try:
-    opts, args = getopt.getopt(sys.argv[1:],"har:t:f:",["repo=", "help=", "from=", "to="])
+    opts, args = getopt.getopt(sys.argv[1:],"har:t:f:d:",["repo=", "help=", "from=", "to=", "date="])
 except getopt.GetoptError:
-    print('pdfStorer.py [-r <repository code>] [-a (if clearing and starting from scratch)] [-f <from address> -t <to address>]')
+    print('pdfStorer.py [-r <repository code>] [-a (if clearing and starting from scratch)] [-f <from address> -t <to address>] [-d <starting at datetime YYYYMMDDTHH[MM]]')
     sys.exit(2)
-efrom = eto = None
+efrom = eto = startDateTime = None
 for opt,arg in opts:
     if opt in ("-h", "--help"):
-        print('pdfStorer.py -r <repository code> -a [if clearing and starting from scratch]')
+        print('pdfStorer.py [-r <repository code> -a [if clearing and starting from scratch] -d <start date in ISO format> [-f <from email> -t <to email>]]')
         sys.exit(0)
     elif opt == '-a':
         all = True
@@ -248,6 +273,8 @@ for opt,arg in opts:
         efrom = arg
     elif opt in ("-t", "--to"):
         eto = arg
+    elif opt in ("-d", "--date"):
+        startDateTime = dateutil.parser.parse(arg)
 if not efrom or not eto:
     efrom = eto = None
 main()

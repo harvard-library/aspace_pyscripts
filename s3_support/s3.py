@@ -3,6 +3,7 @@ import yaml
 from boltons.dictutils import OMD
 import boto3
 from botocore.exceptions import ClientError
+import dateutil.parser
 import logging
 from pprint import pprint
 class S3:
@@ -51,7 +52,19 @@ class S3:
     def download(self,key, filepath):
         self.bucket.download_file(key, filepath)
 
-    def get_object_head(self,key):
+    def get_datetm(self,key):
+        """ returns None if it doesn't exist,
+        otherwise returns a datetime object
+        """
+        datetm = None
+        meta = self.get_key_metadata(key)
+        if meta:
+            datetm =  meta['LastModified']
+            if type(datetm) is str:   # probably not needed anymore,but...
+                datetm = dateutil.parser.parse(datetm)
+        return datetm
+
+    def get_key_metadata(self,key):
         head = None
         try:
             head = self.s3.head_object(Bucket=self.bucket.name, Key=key)
@@ -59,6 +72,7 @@ class S3:
             if e.response['Error']['Code'] != '404':
                 raise
         return head
+
     def remove(self, key):
         self.s3.delete_object(Bucket = self.bucket.name, Key = key)
 

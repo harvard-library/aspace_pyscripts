@@ -42,18 +42,21 @@ password: admin
 
 [pdfStorer.py](./pdfStorer.py) runs through one or all repositories, creating a PDF and storing it in an AWS S3 bucket when the Resource is marked as **published**, and removing the analogous PDF from the S3 bucket if the Resource has been marked as **unpublished**.
 
-The script uses [pickle](https://docs.python.org/3.5/library/pickle.html) to keep track of the last time that the PDF was created for the resource; this allows creating a cron job that will create a new PDF if the resource is subsequently updated.
+The script uses ~~[pickle](https://docs.python.org/3.5/library/pickle.html)~~ the **json** library in the `utils/savestate.py` script to create a file, `pdfs/savedstate.json`  to keep track of the last time that the PDF was created for the resource. 
+However, if that file is missing, or the targeted resource isn't in it, the code will query the bucket for the last update; the combination of these two mechanisms  allows using  a cron job to create a new PDF if the resource is subsequently updated. 
 
 ### Use:
 
 ```bash
-python3 pdfStorer.py [-a] [-r {repository_code}]
+python3 pdfStorer.py [-a] [-r {repository_code}] [-t {email_address -f {email_address}]
 ```
 
 | Flag | Description |
 | --- | ---|
 | -a |   clears the pickle file completely.  Use this if you want to completely refresh your S3 PDF holdings|
 | -r {repository_code} |  For those institutions (like Harvard :smile:) that have more than one repository, you may choose to run this script serially for each repository (or just some of them).|
+| -t {email_address}| Address to receive a completion message |
+| -f {email_address}| the "From" address for that completion message|
  
  **Note** that, at the moment, only *one* instance of the script may run at a time.
  
