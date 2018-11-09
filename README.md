@@ -48,7 +48,7 @@ However, if that file is missing, or the targeted resource isn't in it, the code
 ### Use:
 
 ```bash
-python3 pdfStorer.py [-a] [-r {repository_code}] [-t {email_address -f {email_address}]
+python3 pdfStorer.py [-a] [-r {repository_code}] [-t {email_address} -f {email_address}]
 ```
 
 | Flag | Description |
