@@ -12,13 +12,16 @@ class savestate:
         self.obj = {}
         self.save()
 
-    def save(self):
-        json.dump(self.obj, open(self.filepath,"w"))
+    def pop(self,key):
+        self.obj.delete(key)
 
     def load(self):
         try:
             self.obj =  json.load(open(self.filepath, "r"))
         except FileNotFoundError:
             self.obj = {}
+
+    def save(self):
+        json.dump(self.obj, open(self.filepath,"w"))
 
 
