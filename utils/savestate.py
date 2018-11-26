@@ -12,8 +12,8 @@ class savestate:
         self.obj = {}
         self.save()
 
-    def pop(self,key):
-        self.obj.delete(key)
+    def pop(self,key, placeholder):
+        self.obj.pop(key)
 
     def load(self):
         try:
