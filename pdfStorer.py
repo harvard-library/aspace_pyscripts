@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import sys, getopt, attr, structlog, yaml
+import sys, getopt, attr, structlog, yaml, traceback
 import logging
 from datetime import datetime, timezone
 import dateutil.parser
@@ -233,22 +233,22 @@ def main():
         main_log.info(end_msg)
         mail_msg = mail_msg + "\n" + datetime.now().strftime(DATEFORMAT) + " " + end_msg
     except Exception as e:
+        tb = sys.exc_info()
         try:
             end_msg = "Processed {} repositories, {} resources: {} pdfs created, {} pdfs deleted, {} errors".format(repo_ctr, ctr, counters['created'], counters['deleted'], counters['errors'])
         except Exception as em:
             end_msg = "Problem creating the completion line {}".format(em)
-        error_msg = "An Error was encountered: ({}). Processing halted\n {}".format(e, end_msg)
+        error_msg = "An Error was encountered: ({} {}). Processing halted\n {}".format(e,tb, end_msg)
         main_log.error(error_msg)
         mail_msg = mail_msg + "\n" + datetime.now().strftime(DATEFORMAT) + " " + error_msg
         clean = False
     if (clean):
         if efrom and eto:
             send_mail(eto, efrom, MAILSUBJECT, mail_msg)
-        sys.exit(0)
     else:
         if efrom and eto:
             send_mail(eto, efrom, MAILSUBJECT +' WITH ERROR', mail_msg)
-        sys.exit(1)
+        raise Exception("error")
 
 
 if already_running(pidfilepath):
@@ -277,5 +277,11 @@ for opt,arg in opts:
         startDateTime = dateutil.parser.parse(arg)
 if not efrom or not eto:
     efrom = eto = None
-main()
-os.unlink(pidfilepath)
+try:
+    main()
+    os.unlink(pidfilepath)
+    sys.exit(0)
+except Exception:
+    os.unlink(pidfilepath)
+    sys.exit(1)
+
