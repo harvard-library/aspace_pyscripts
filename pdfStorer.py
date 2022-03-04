@@ -21,7 +21,7 @@ console = logging.StreamHandler()
 console.setFormatter(logging.Formatter('%(name)-12s: %(levelname)-8s %(asctime)s %(message)s'))
 main_log.addHandler(console)
 
-import requests
+from requests import Session
 from boltons.dictutils import OMD
 from asnake.aspace import ASpace
 from utils.utils import get_latest_update, already_running, get_filetype, send_mail
@@ -41,6 +41,7 @@ repo_ctr = 0
 pidfilepath = 'pdfstorerdaemon.pid'
 all = False
 repo_code = None
+http = Session()
 
 def add_to_ss(key, dt):
     """Convert the incoming date to ISO format
@@ -50,7 +51,7 @@ def add_to_ss(key, dt):
     if type(date) is datetime:
         date = dt.isoformat()
     ss.obj[key] = date
-    
+
 def remove_from_ss(key):
     """ remove the key
     """
@@ -84,7 +85,7 @@ def get_latest_datetm(resource_uri):
         dttm = datetime.strptime(date,"%Y-%m-%dT%H:%M:%SZ")
         dttm = dttm.astimezone(tz=None)
     return dttm
-        
+
 
 def get_pdf(uri, directory, name):
     """Fetch the PDF from the PUI and write it to the directory
@@ -94,14 +95,16 @@ def get_pdf(uri, directory, name):
     # check for the directory and name being non-empty?
     filename = directory + name + ".pdf"
     url = omd.get('pdfurl').format(uri)
-    r = requests.get(url, stream=True)
+    main_log.info(f"Fetching: {url}")
+    r = http.get(url, stream=True)
     with open(filename, 'wb') as fd:
         for chunk in r.iter_content(3000):
           fd.write(chunk)
-          
+
 def needs_update(uri,res_ident, name):
     global pdf_upd
     if all:
+        pdf_upd += 1
         return True
     last_dttm = None
     if res_ident in ss.obj:
@@ -121,7 +124,7 @@ def needs_update(uri,res_ident, name):
 def process_repository(repo):
     global ctr
     global pdf_upd
-    main_log.info("Starting repository {} {} {}".format(repo.id, repo.repo_code, repo.name))        
+    main_log.info("Starting repository {} {} {}".format(repo.id, repo.repo_code, repo.name))
     pdf_ctr = 0
     pdf_del = 0
     pdf_upd = 0
@@ -150,7 +153,7 @@ def process_resource(resource, publish):
     """
     res_ident  = resource.uri.replace("/", "_")
     try:
-        name = resource.ead_id 
+        name = resource.ead_id
     except AttributeError as ae:
         name = res_ident
         if resource.level != 'collection':
@@ -184,7 +187,7 @@ def process_resource(resource, publish):
     else:
         remove_file(name, res_ident)
     return published
-    
+
 def do_it():
     global omd
     global s3
@@ -238,7 +241,8 @@ def main():
             end_msg = "Processed {} repositories, {} resources: {} pdfs created, {} pdfs deleted, {} errors".format(repo_ctr, ctr, counters['created'], counters['deleted'], counters['errors'])
         except Exception as em:
             end_msg = "Problem creating the completion line {}".format(em)
-        error_msg = "An Error was encountered: ({} {}). Processing halted\n {}".format(e,tb, end_msg)
+        error_msg = "An Error was encountered: ({}). Processing halted\n {}".format(e, end_msg)
+        traceback.print_exc()
         main_log.error(error_msg)
         mail_msg = mail_msg + "\n" + datetime.now().strftime(DATEFORMAT) + " " + error_msg
         clean = False
@@ -284,4 +288,3 @@ try:
 except Exception:
     os.unlink(pidfilepath)
     sys.exit(1)
-

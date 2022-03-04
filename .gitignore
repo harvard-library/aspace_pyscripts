@@ -115,3 +115,7 @@ pdftmp/*pdf
 
 #pickle file
 pickle
+
+**/node_modules
+
+pdfstorerdaemon.pid

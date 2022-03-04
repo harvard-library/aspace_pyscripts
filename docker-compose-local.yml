@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  cron:
+    container_name: "cron"
+    build:
+      context: "."
+      dockerfile: "Dockerfile.cron.local"
+    volumes:
+      - ./:/app
+      - ~/.archivessnake.yml:/home/aspace_croner/.archivessnake.yml
+    networks:
+      - aspace-local
+
+networks:
+    aspace-local:
+        name: aspace-local

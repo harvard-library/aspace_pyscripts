@@ -7,21 +7,22 @@ This work depends heavily on [ArchivesSnake](https://github.com/archivesspace-la
 
 Functionality that is potentially useful for additional scripts has been factored out into sub-folders.
 
+Also included is a node script useful for periodically running the scripts,
 ## Requirements and Dependencies
 
 These scripts were written with Python 3.6.5
 
 The following python libraries must be installed; they are all available in [PyPi](https://pypi.org):
-* ArchivesSnake  
+* ArchivesSnake
 * boto3
 * SolrClient
 * python-magic
 
-There is a [bash script](.bin/install_libraries.sh) provided for installing these libraries on the **user** level.
+To install dependencies, do `pip install -r requirements.txt`
 
 ### Important Note:
 
-The scripts in this repository that use ArchivesSnake are relying on there being an **.archivessnake.yml** configuration file in the home directory of the user. 
+The scripts in this repository that use ArchivesSnake are relying on there being an **.archivessnake.yml** configuration file in the home directory of the user.
 An example configuration file:
 
 ``` yaml
@@ -42,8 +43,8 @@ password: admin
 
 [pdfStorer.py](./pdfStorer.py) runs through one or all repositories, creating a PDF and storing it in an AWS S3 bucket when the Resource is marked as **published**, and removing the analogous PDF from the S3 bucket if the Resource has been marked as **unpublished**.
 
-The script uses ~~[pickle](https://docs.python.org/3.5/library/pickle.html)~~ the **json** library in the `utils/savestate.py` script to create a file, `pdfs/savedstate.json`  to keep track of the last time that the PDF was created for the resource. 
-However, if that file is missing, or the targeted resource isn't in it, the code will query the bucket for the last update; the combination of these two mechanisms  allows using  a cron job to create a new PDF if the resource is subsequently updated. 
+The script uses ~~[pickle](https://docs.python.org/3.5/library/pickle.html)~~ the **json** library in the `utils/savestate.py` script to create a file, `pdfs/savedstate.json`  to keep track of the last time that the PDF was created for the resource.
+However, if that file is missing, or the targeted resource isn't in it, the code will query the bucket for the last update; the combination of these two mechanisms  allows using  a cron job to create a new PDF if the resource is subsequently updated.
 
 ### Use:
 
@@ -57,16 +58,16 @@ python3 pdfStorer.py [-a] [-r {repository_code}] [-t {email_address} -f {email_a
 | -r {repository_code} |  For those institutions (like Harvard :smile:) that have more than one repository, you may choose to run this script serially for each repository (or just some of them).|
 | -t {email_address}| Address to receive a completion message |
 | -f {email_address}| the "From" address for that completion message|
- 
+
  **Note** that, at the moment, only *one* instance of the script may run at a time.
- 
+
  ### Configuration:
- 
+
   This script requires two yaml files: **pdf_store.yml** (see [template](pdf_store.yml.template)), which is expected to be in the same directory as the script, and **s3.yml** (see [template](s3.yml.template)), which can be anywhere, as its path is specified in **pdf_store.yml**
-  
+
   At the moment, the logging configuration is hard-coded such that the logs will be written to the **/logs** folder, and have the format **pdf_storer_YYYYMMDD.log**. This may change in subsequent releases.
-  
- **In addition**, the *already_running* function in the [utilities subpackage](utils/utils.py), which is used to determine if there already is a **pdfStorer** process running, assumes that the operating system is linux.  Feel free to fork and contribute back! 
+
+ **In addition**, the *already_running* function in the [utilities subpackage](utils/utils.py), which is used to determine if there already is a **pdfStorer** process running, assumes that the operating system is linux.  Feel free to fork and contribute back!
 
 ## Script: Identify Users without emails
 
@@ -74,7 +75,7 @@ python3 pdfStorer.py [-a] [-r {repository_code}] [-t {email_address} -f {email_a
 
 ### Use:
 
-```bash 
+```bash
 python3 missing_emails.py
 ```
 
@@ -140,7 +141,7 @@ If you define **configpath**, and the s3.yml file is properly filled in, you nee
 
 ### Script: Empty out an S3 bucket
 
-[bucket_clear.py](./bucket_clear.py) is a convenience script that empties a given S3 bucket without deleting the actual bucket.  
+[bucket_clear.py](./bucket_clear.py) is a convenience script that empties a given S3 bucket without deleting the actual bucket.
 
 #### Use:
 
@@ -163,7 +164,7 @@ The [pickler](utils/pickler.py) class was abstracted out so that more than one s
      pkl.obj['foo'] = 'bar'
   pkl.save()
 ```
-where filepath is the path to the file that will hold/holds the pickled object. 
+where filepath is the path to the file that will hold/holds the pickled object.
 
 | Method | Function |
 | -- | -- |
