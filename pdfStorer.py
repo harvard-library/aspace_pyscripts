@@ -52,11 +52,6 @@ def add_to_ss(key, dt):
         date = dt.isoformat()
     ss.obj[key] = date
 
-def remove_from_ss(key):
-    """ remove the key
-    """
-    ss.pop(key, None)
-
 def get_details():
     '''looks for values in pdf_store.yml '''
     yaml_path = "pdf_store.yml"
@@ -145,7 +140,7 @@ def remove_file(name, res_ident):
      s3.remove(name + ".pdf")
      if res_ident in ss.obj:
          counters['deleted'] +=1
-         remove_from_ss(res_ident)
+         ss.pop(res_ident, None)
 
 def process_resource(resource, publish):
     """Determine whether to get this resource's pdf;
@@ -206,10 +201,8 @@ def do_it():
         ss.clear()
     solr = SolrClient(omd.get('solr_url'))
     tmpdir = omd.get('tmpdir')
-    try:
-        s3 = S3(configpath = omd.get('s3_yaml'))
-    except Exception as e:
-        raise e
+    s3 = S3(configpath = omd.get('s3_yaml'))
+
     aspace = ASpace()
     for repo in aspace.repositories:
         if all or repo_code is None  or repo.repo_code == repo_code:
@@ -285,6 +278,7 @@ try:
     main()
     os.unlink(pidfilepath)
     sys.exit(0)
-except Exception:
+except Exception as e:
+    traceback.format_exc()
     os.unlink(pidfilepath)
     sys.exit(1)

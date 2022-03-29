@@ -2,7 +2,7 @@ const Cron = require("croner");
 const fs = require("fs");
 const {spawn} = require("child_process");
 
-Cron("* */20 * * * *", {}, ()=> {
+Cron("*/5 * * * * *", {}, ()=> {
   console.log("running pdfStorer.py");
   try {
     if ( !fs.existsSync("/aspace_pyscripts/pdfstorerdaemon.pid") ) {
