@@ -118,17 +118,20 @@ def process_repository(repo):
     pdf_ctr = 0
     pdf_del = 0
     pdf_upd = 0
+    pdf_get_failed = 0
     for resource in repo.resources:
         pdf = process_resource(resource, repo.publish)
-        if pdf:
+        if pdf is True:
             pdf_ctr +=1
+        elif pdf is None:
+            pdf_get_failed = 0
         else:
             pdf_del +=1
         ctr +=1
         if ctr % 10 == 0:
             ss.save()
     ss.save() # always save at end of repo
-    main_log.info("Finished repository {} {} {}. {} published pdfs  {} unpublished resources {} pdfs needing updating".format(repo.id, repo.repo_code, repo.name,pdf_ctr, pdf_del, pdf_upd))
+    main_log.info("Finished repository {} {} {}. {} published pdfs  {} unpublished resources {} pdfs needing updating {} pdfs failed to succesfully download".format(repo.id, repo.repo_code, repo.name,pdf_ctr, pdf_del, pdf_upd, pdf_get_failed))
 
 # Removing the file
 def remove_file(name, res_ident):
@@ -140,6 +143,8 @@ def remove_file(name, res_ident):
 def process_resource(resource, publish):
     """Determine whether to get this resource's pdf;
     if so, pass to get_pdf with a directory and name
+
+    Returns True if published, False if unpublished, and None if an error occurs while fetching the resource
     """
     res_ident  = resource.uri.replace("/", "_")
     try:
@@ -166,7 +171,7 @@ def process_resource(resource, publish):
                 if os.path.exists(filepath):
                     os.remove(filepath)
                 counters['errors'] += 1
-                continue
+                return None
             filetype = get_filetype(filepath)
             if filetype.upper().startswith('PDF'):
                 s3.upload(filepath, key)
