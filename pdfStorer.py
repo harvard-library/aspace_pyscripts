@@ -86,7 +86,7 @@ def get_pdf(uri, directory, name):
     filename = directory + name + ".pdf"
     url = omd.get('pdfurl').format(uri)
     main_log.info(f"Fetching: {url}")
-    r = http.get(url, stream=True)
+    r = http.get(url, stream=True, timeout=60)
     with open(filename, 'wb') as fd:
         for chunk in r.iter_content(3000):
           fd.write(chunk)
