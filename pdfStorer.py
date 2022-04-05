@@ -28,12 +28,7 @@ from utils.utils import get_latest_update, already_running, get_filetype, send_m
 from utils.savestate import savestate
 from s3_support.s3 import S3
 from SolrClient import SolrClient
-import pprint
 
-
-
-
-pp =  pprint.PrettyPrinter(indent=4)
 omd = ''
 ctr = 0
 counters = {'created': 0, 'updated': 0, 'deleted': 0, 'errors':0}
@@ -158,17 +153,23 @@ def process_resource(resource, publish):
             main_log.warning("No EAD ID for \t{}; \tname is: {}".format(resource.title,name));
     except Exception as e:
         raise e
+    key = name + ".pdf"
+    filepath = tmpdir + key
     published = False
     if publish and resource.publish:
         # resource.uri is like /repositories/4/resource/34
         if needs_update(resource.uri, res_ident,name):
-            get_pdf(resource.uri, tmpdir, name)
-            key = name + ".pdf"
-            filepath = tmpdir + key
+            try:
+                get_pdf(resource.uri, tmpdir, name)
+            except Exception as e:
+                logging.error(f"get_pdf for resource {resource.uri} encountered error: {traceback.format_exc()}")
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                counters['errors'] += 1
+                continue
             filetype = get_filetype(filepath)
             if filetype.upper().startswith('PDF'):
                 s3.upload(filepath, key)
-                #pp.pprint(s3.get_object_head(key))
                 add_to_ss(res_ident,  datetime.now(timezone.utc))
                 os.remove(filepath)
                 counters['created'] += 1
@@ -279,6 +280,6 @@ try:
     os.unlink(pidfilepath)
     sys.exit(0)
 except Exception as e:
-    traceback.format_exc()
+    traceback.print_exc()
     os.unlink(pidfilepath)
     sys.exit(1)
