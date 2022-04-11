@@ -86,7 +86,7 @@ def get_pdf(uri, directory, name):
     filename = directory + name + ".pdf"
     url = omd.get('pdfurl').format(uri)
     main_log.info(f"Fetching: {url}")
-    r = http.get(url, stream=True, timeout=60)
+    r = http.get(url, stream=True, timeout=600)
     with open(filename, 'wb') as fd:
         for chunk in r.iter_content(3000):
           fd.write(chunk)
@@ -280,6 +280,7 @@ for opt,arg in opts:
         startDateTime = dateutil.parser.parse(arg)
 if not efrom or not eto:
     efrom = eto = None
+
 try:
     main()
     os.unlink(pidfilepath)
