@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-import sys, getopt, attr, structlog, yaml, traceback
+import sys, attr, structlog, yaml, traceback
+from argparse import ArgumentParser
 import logging
 from datetime import datetime, timezone
 import dateutil.parser
@@ -34,9 +35,17 @@ ctr = 0
 counters = {'created': 0, 'updated': 0, 'deleted': 0, 'errors':0}
 repo_ctr = 0
 pidfilepath = 'pdfstorerdaemon.pid'
-all = False
-repo_code = None
 http = Session()
+
+ap = ArgumentParser(prog='pdfStorer.py')
+ap.add_argument('-a', '--all', action="store_true", help="clear and start from scratch")
+ap.add_argument('-r', '--repo', nargs="?", dest="repo_code", type=str.upper, help="Repository code, limits processing to specific repo")
+ap.add_argument('-f', '--from', nargs="?", dest="from_email", help="email to send from")
+ap.add_argument('-t', '--to', nargs="?", dest="to_email", help="email to send to")
+ap.add_argument('-d', '--date', nargs="?", type=dateutil.parser.parse, help="start date in ISO format")
+ap.add_argument('--timeout', nargs="?", type=int, default=600, help="timeout per PDF fetch request in seconds")
+args = ap.parse_args()
+
 
 def add_to_ss(key, dt):
     """Convert the incoming date to ISO format
@@ -86,14 +95,14 @@ def get_pdf(uri, directory, name):
     filename = directory + name + ".pdf"
     url = omd.get('pdfurl').format(uri)
     main_log.info(f"Fetching: {url}")
-    r = http.get(url, stream=True, timeout=600)
+    r = http.get(url, stream=True, timeout=args.timeout)
     with open(filename, 'wb') as fd:
         for chunk in r.iter_content(3000):
           fd.write(chunk)
 
 def needs_update(uri,res_ident, name):
     global pdf_upd
-    if all:
+    if args.all:
         pdf_upd += 1
         return True
     last_dttm = None
@@ -103,7 +112,7 @@ def needs_update(uri,res_ident, name):
         last_dttm = s3.get_datetm(name + '.pdf')
     if not last_dttm:
         return True
-    last = startDateTime or last_dttm
+    last = args.date or last_dttm
     dttm = get_latest_datetm(uri)
     if dttm is None or last > dttm:
         return False
@@ -203,7 +212,7 @@ def do_it():
     main_log.info("Instance: " + instance)
     main_log.info("retrieving saved state, if any, at {}".format(omd.get("savedstate")))
     ss = savestate(omd.get("savedstate"))
-    if all:
+    if args.all:
         ss.clear()
     solr = SolrClient(omd.get('solr_url'))
     tmpdir = omd.get('tmpdir')
@@ -211,7 +220,7 @@ def do_it():
 
     aspace = ASpace()
     for repo in aspace.repositories:
-        if all or repo_code is None  or repo.repo_code == repo_code:
+        if args.all or args.repo_code is None  or repo.repo_code == repo_code:
             process_repository(repo)
             repo_ctr += 1
     ss.save() # last time for good luck!
@@ -221,7 +230,7 @@ def main():
     global console
     console.setLevel(logging.INFO)
     os.chdir(relative_dir)
-    start_msg = 'Beginning PDF storing run: all is %r, repo_code is %r , from is %r, to is %r' % (all, repo_code, efrom, eto)
+    start_msg = f'Beginning PDF storing run: all is {args.all}, repo_code is {args.repo} , from is {args.from_email}, to is {args.to_email}'
     main_log.info(start_msg)
     mail_msg = datetime.now().strftime(DATEFORMAT) + " " + start_msg + "\n\t Logfile is at {}/logs/pdf_storer_{}.log".format(os.getcwd(), datetime.today().strftime("%Y%m%d"))
     console.setLevel(logging.ERROR)
@@ -245,41 +254,18 @@ def main():
         main_log.error(error_msg)
         mail_msg = mail_msg + "\n" + datetime.now().strftime(DATEFORMAT) + " " + error_msg
         clean = False
-    if (clean):
-        if efrom and eto:
-            send_mail(eto, efrom, MAILSUBJECT, mail_msg)
-    else:
-        if efrom and eto:
-            send_mail(eto, efrom, MAILSUBJECT +' WITH ERROR', mail_msg)
-        raise Exception("error")
+    if args.from_email and args.to_email:
+        if (clean):
+            send_mail(args.to_email, args.from_email, MAILSUBJECT, mail_msg)
+        else:
+            send_mail(args.to_email, args.from_email, MAILSUBJECT +' WITH ERROR', mail_msg)
+            raise Exception("error")
 
 
 if already_running(pidfilepath):
     main_log.error(sys.argv[0] + " already running.  Exiting")
     print(sys.argv[0] + " already running.  Exiting")
     sys.exit()
-try:
-    opts, args = getopt.getopt(sys.argv[1:],"har:t:f:d:",["repo=", "help=", "from=", "to=", "date="])
-except getopt.GetoptError:
-    print('pdfStorer.py [-r <repository code>] [-a (if clearing and starting from scratch)] [-f <from address> -t <to address>] [-d <starting at datetime YYYYMMDDTHH[MM]]')
-    sys.exit(2)
-efrom = eto = startDateTime = None
-for opt,arg in opts:
-    if opt in ("-h", "--help"):
-        print('pdfStorer.py [-r <repository code> -a [if clearing and starting from scratch] -d <start date in ISO format> [-f <from email> -t <to email>]]')
-        sys.exit(0)
-    elif opt == '-a':
-        all = True
-    elif opt in ("-r", "--repo"):
-        repo_code = arg.upper()
-    elif opt in ("-f", "--from"):
-        efrom = arg
-    elif opt in ("-t", "--to"):
-        eto = arg
-    elif opt in ("-d", "--date"):
-        startDateTime = dateutil.parser.parse(arg)
-if not efrom or not eto:
-    efrom = eto = None
 
 try:
     main()
