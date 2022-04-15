@@ -230,7 +230,7 @@ def main():
     global console
     console.setLevel(logging.INFO)
     os.chdir(relative_dir)
-    start_msg = f'Beginning PDF storing run: all is {args.all}, repo_code is {args.repo} , from is {args.from_email}, to is {args.to_email}'
+    start_msg = f'Beginning PDF storing run: all is {args.all}, repo_code is {args.repo_code} , from is {args.from_email}, to is {args.to_email}'
     main_log.info(start_msg)
     mail_msg = datetime.now().strftime(DATEFORMAT) + " " + start_msg + "\n\t Logfile is at {}/logs/pdf_storer_{}.log".format(os.getcwd(), datetime.today().strftime("%Y%m%d"))
     console.setLevel(logging.ERROR)
