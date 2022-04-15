@@ -18,10 +18,8 @@ class savestate:
     def load(self):
         try:
             self.obj =  json.load(open(self.filepath, "r"))
-        except FileNotFoundError:
+        except:
             self.obj = {}
 
     def save(self):
         json.dump(self.obj, open(self.filepath,"w"))
-
-
