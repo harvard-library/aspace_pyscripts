@@ -15,10 +15,10 @@ Cron("0 0 * * * *", {}, ()=> {
   console.log("running pdfStorer.py");
   let args = [];
   if (process.env.TO_EMAIL) {
-    args.push("-t", "dave_mayo@harvard.edu")
+    args.push("-t", process.env.TO_EMAIL);
   }
   if (process.env.FROM_EMAIL) {
-    args.push("-f", "dave_mayo@harvard.edu")
+    args.push("-f", process.env.FROM_EMAIL);
   }
   if (process.env.PDF_TIMEOUT) {
     args.push("--timeout", process.env.PDF_TIMEOUT);
