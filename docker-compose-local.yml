@@ -7,7 +7,7 @@ services:
       dockerfile: "Dockerfile.cron.local"
     volumes:
       - ./:/aspace_pyscripts
-      - ~/.archivessnake.yml:/home/aspace_pyscripts/.archivessnake.yml
+      - ~/.archivessnake.yml:/home/aspace/.archivessnake.yml
     networks:
       - aspace-local
 

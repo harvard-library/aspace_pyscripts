@@ -13,8 +13,13 @@ const {spawn} = require("child_process");
       │ │ │ │ │ │       */
 Cron("0 0 * * * *", {}, ()=> {
   console.log("running pdfStorer.py");
-  let args = ["-t", "dave_mayo@harvard.edu",
-              "-f", "dave_mayo@harvard.edu"];
+  let args = [];
+  if (process.env.TO_EMAIL) {
+    args.push("-t", "dave_mayo@harvard.edu")
+  }
+  if (process.env.FROM_EMAIL) {
+    args.push("-f", "dave_mayo@harvard.edu")
+  }
   if (process.env.PDF_TIMEOUT) {
     args.push("--timeout", process.env.PDF_TIMEOUT);
   }
